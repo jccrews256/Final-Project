@@ -1,0 +1,68 @@
+---
+title: "Exploratory Data Analysis"
+author: "Cass Crews"
+format: html
+editor: visual
+---
+
+# Introduction
+
+# Loading Packages and Reading in Data
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
+  select(Diabetes_binary, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age)
+```
+
+
+
+# Initial Cleaning
+
+We need to complete a few data validation steps to determine whether the data need to be cleaned before any summaries and analysis. To start, we will count the number of missing values for each variable. 
+
+```{r}
+raw_data |>
+  summarize(across(everything(),~sum(is.na(.x))))
+```
+
+Fortunately, there are no missing values, so we can proceed to confirming each variable's data type is appropriate. 
+
+```{r}
+str(raw_data)
+```
+
+All of these variables should actually be factors, but they are stored as numeric variables. Let's convert them to factors and give them informative labels. However, let's first confirm the levels of these factors are what we expect. 
+
+```{r}
+apply(raw_data, MARGIN = 2, unique)
+```
+
+These values are exactly as we expect: the first seven variables are binary, while the final variable (`Age`) is a multi-level factor ranging from a value of `1` for individuals between 18 and 24 to a value of `13` for those at least 80 years old. 
+
+Thankfully, these data are very clean. We are now ready to convert these variables to factors. In doing so, let's give the variables more consistent names. 
+
+```{r}
+data<-raw_data |>
+  mutate(diabetes_binary = factor(Diabetes_binary, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(phys_activity = factor(PhysActivity, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(fruits = factor(Fruits, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(veggies = factor(Veggies, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(smoker = factor(Smoker, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(hvy_alc_consump = factor(HvyAlcoholConsump, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(sex = factor(Sex, levels = 0:1, labels = c("Female", "Male"))) |>
+  mutate(age = factor(Age, levels = 1:13, labels = c("18 to 24", "25 to 29",
+                                                     "30 to 34", "35 to 39",
+                                                     "40 to 44", "45 to 49",
+                                                     "50 to 54", "55 to 59",
+                                                     "60 to 64", "65 to 69",
+                                                     "70 to 74", "75 to 79",
+                                                     "80+"))) |>
+  select(!(Diabetes_binary:Age))
+```
+
+
+# Summaries
