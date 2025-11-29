@@ -62,7 +62,44 @@ data<-raw_data |>
                                                      "70 to 74", "75 to 79",
                                                      "80+"))) |>
   select(!(Diabetes_binary:Age))
-```
 
+str(data)
+```
+Note that when we printed the data structure this time, each variable is a factor with interpretable labels. 
 
 # Summaries
+
+We are now ready to summarize the data. Let's start by exploring the unconditional distribution of each variable. 
+
+For our binary categorical variables other than `sex`, let's produce a single table to compare the breakdown across `yes` and `no`. 
+
+```{r}
+data |>
+  select(!c(age, sex)) |>
+  pivot_longer(cols = everything(), names_to = "variables", values_to = "values") |>
+  group_by(variables, values) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = values, values_from = count)
+```
+
+Looking at these univariate distributions, one key finding is that we have substantial class imbalance in our response variable. However, this is not particularly concerning given the large sample size. 
+
+Before we move to multi-variate distributions, let's look at the univariate breakdowns for `sex` and `age`. 
+
+```{r}
+data |>
+  group_by(sex) |>
+  summarize(count = n()) 
+```
+
+It is notable that 56% of the observations correspond to females, compared to roughly 51% of the national population. 
+
+```{r}
+data |>
+  group_by(age) |>
+  summarize(count = n()) |>
+  print(n = 13)
+```
+
+Given that these data are built on medical records, observation counts generally trend up with age until we reach the age groups near the average life expectancy. 
+
