@@ -11,6 +11,8 @@ editor: visual
 
 ```{r}
 library(tidyverse)
+library(grid)
+library(gridExtra)
 ```
 
 ```{r}
@@ -69,6 +71,8 @@ Note that when we printed the data structure this time, each variable is a facto
 
 # Summaries
 
+### Univariate Summaries
+
 We are now ready to summarize the data. Let's start by exploring the unconditional distribution of each variable. 
 
 For our binary categorical variables other than `sex`, let's produce a single table to compare the breakdown across `yes` and `no`. 
@@ -103,3 +107,39 @@ data |>
 
 Given that these data are built on medical records, observation counts generally trend up with age until we reach the age groups near the average life expectancy. 
 
+### Multivariate Summaries
+
+To start our multivariate analysis, let's plot our response by each level of our `yes`-`no` variables. Given that we have already explored the unconditional distributions for these variables, we will use filled bar plots to focus specifically on the differences in diabetes rates across these conditional distributions.  
+
+```{r}
+g1<-ggplot(data = data, aes(x = phys_activity, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Physical Activity?", y = "Share of Obs.", fill = "Diabetes?")
+
+g2<-ggplot(data = data, aes(x = fruits, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Fruit?", y = "Share of Obs.", fill = "Diabetes?")
+
+g3<-ggplot(data = data, aes(x = veggies, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Veggies?", y = "Share of Obs.", fill = "Diabetes?")
+
+g4<-ggplot(data = data, aes(x = smoker, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Smoking History?", y = "Share of Obs.", fill = "Diabetes?")
+
+g5<-ggplot(data = data, aes(x = hvy_alc_consump, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Heavy Alcohol Consumption?", y = "Share of Obs.", fill = "Diabetes?")
+
+grid.arrange(g1, g2, g3, g4, g5, ncol = 2, top = textGrob("Diabetes Frequency across Levels of Behavioral Variables", hjust = 0.59, gp = gpar(fontsize = 14)))
+```
+
+It seems that, unconditional on other variables, physical activity and heavy alcohol consumption are most closely related to changes in diabetes frequency. Perhaps surprisingly, the diabetes rate is lower among individuals with relatively high alcohol consumption. 
+
+Let's now explore any differences in diabetes frequency across sex to see whether this demographic characteristic explains diabetes incidence on its own. 
+
+```{r}
+ggplot(data = data, aes(x = sex, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Sex", y = "Share of Obs.", fill = "Diabetes?", title = "Diabetes Frequency by Sex")
+```
+
+It seems males in this dataset are slighly more likely to have diabetes. 
+
+For our final visual summary, let's compare diabetes frequencies across age groups. 
+
+```{r}
+ggplot(data = data, aes(x = age, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Age Group", y = "Share of Observations", fill = "Diabetes?", title = "Diabetes Frequency by Age Group") + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+
+At least in our sample, diabetes rates increase with age until we reach the oldest age groups; the decline for older ages may reflect reduced life expectancy due to diabetes. 
