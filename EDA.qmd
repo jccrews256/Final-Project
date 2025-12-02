@@ -17,7 +17,7 @@ library(gridExtra)
 
 ```{r}
 raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
-  select(Diabetes_binary, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age)
+  select(Diabetes_binary, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI)
 ```
 
 
@@ -63,6 +63,7 @@ data<-raw_data |>
                                                      "60 to 64", "65 to 69",
                                                      "70 to 74", "75 to 79",
                                                      "80+"))) |>
+  rename(bmi = BMI) |>
   select(!(Diabetes_binary:Age))
 
 str(data)
