@@ -1,0 +1,216 @@
+---
+title: "Modeling Diabetes Incidence"
+author: "Cass Crews"
+format: html
+editor: visual
+---
+
+# Introduction
+
+# Loading Packages and Processing the Data
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(rsample)
+library(ranger)
+library(vip)
+library(future)
+```
+
+```{r}
+raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
+  select(Diabetes_binary, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age)
+
+data<-raw_data |>
+  mutate(diabetes_binary = factor(Diabetes_binary, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(phys_activity = factor(PhysActivity, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(fruits = factor(Fruits, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(veggies = factor(Veggies, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(smoker = factor(Smoker, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(hvy_alc_consump = factor(HvyAlcoholConsump, levels = 0:1, labels = c("No", "Yes"))) |>
+  mutate(sex = factor(Sex, levels = 0:1, labels = c("Female", "Male"))) |>
+  mutate(age = factor(Age, levels = 1:13, labels = c("18 to 24", "25 to 29",
+                                                     "30 to 34", "35 to 39",
+                                                     "40 to 44", "45 to 49",
+                                                     "50 to 54", "55 to 59",
+                                                     "60 to 64", "65 to 69",
+                                                     "70 to 74", "75 to 79",
+                                                     "80+"))) |>
+  select(!(Diabetes_binary:Age))
+```
+
+# Preparing the Data for Model Tuning
+
+```{r}
+plan(multisession, workers = 5) # Use 10 cores
+```
+
+
+```{r}
+#Setting seed for reproducibility
+set.seed(10)
+
+#Splitting the data into training and test sets 
+split<-initial_split(data, prop = 0.7)
+
+#Printing the structure of the split object
+split
+```
+
+```{r}
+#Setting seed for reproducibility 
+set.seed(5)
+
+#Extracting training and test sets
+train<-training(split)
+test<-testing(split)
+
+#Separating the training data into the 5 folds
+folds<-vfold_cv(train, v = 5)
+
+#Printing the structure of the folds object
+folds
+```
+
+
+# Specifying Data Processing Steps
+
+```{r}
+#Constructing tidymodels recipe
+recipe<-recipe(diabetes_binary ~ ., data = train) |>
+  #Creating dummies for all predictors (all are factors)
+  step_dummy(all_predictors())
+
+#Printing recipe variable list with roles
+recipe |>
+  prep(training = train) |>
+  summary()
+```
+
+# Classification Tree
+
+
+
+```{r}
+#Specifying model and engine for classification tree
+tree_model<-decision_tree(tree_depth = tune(),
+                          min_n = 5,
+                          cost_complexity = tune()) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+#Creating classification tree workflow
+tree_wkf<-workflow() |>
+  add_recipe(recipe) |>
+  add_model(tree_model)
+```
+
+```{r}
+#Fitting classification tree model across grid of depth and complexity values
+tree_fit<-tree_wkf |>
+  tune_grid(resamples = folds,
+            grid = grid_regular(tree_depth(), cost_complexity(), levels = c(10,10)),
+            metrics = metric_set(mn_log_loss, accuracy)) 
+```
+
+```{r}
+#Sorting models by negative log loss
+tree_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
+  arrange(mean)
+
+#Sorting models by accuracy
+tree_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
+  arrange(mean)
+
+```
+
+```{r}
+#Capturing best tree model
+tree_best_params<-select_best(tree_fit, metric = "mn_log_loss")
+
+#Printing hyperparameter values
+tree_best_params
+```
+
+
+
+# Random Forest
+
+
+```{r}
+#Specifying model and engine for random forest
+rf_model<-rand_forest(mtry = tune(),
+                          min_n = 5,
+                          trees = 500) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+#Creating random forest workflow
+rf_wkf<-workflow() |>
+  add_recipe(recipe) |>
+  add_model(rf_model)
+```
+
+```{r}
+#Setting seed for reproducibility when rerunning chunk
+set.seed(10)
+
+#Fitting random forest model across values of mtry
+rf_fit<-rf_wkf |>
+  tune_grid(resamples = folds,
+            grid = grid_regular(mtry(range = c(1,7)), levels = 7),
+            metrics = metric_set(mn_log_loss, accuracy)) 
+```
+
+```{r}
+#Sorting models by negative log loss
+rf_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
+  arrange(mean)
+
+#Sorting models by accuracy
+rf_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
+  arrange(mean)
+```
+
+```{r}
+#Capturing best random forest model
+rf_best_params<-select_best(rf_fit, metric = "mn_log_loss")
+
+#Printing hyperparameter values
+rf_best_params
+```
+
+
+#Comparing Performance on Test Set
+
+```{r}
+#Setting classification tree hyperparameter values to those selected via CV
+tree_final_wkf<-tree_wkf |>
+  finalize_workflow(tree_best_params)
+
+#Fitting final model to the full training set and testing on original test set
+tree_final_fit<-tree_final_wkf |>
+  last_fit(split, metrics = metric_set(mn_log_loss, accuracy))
+```
+
+```{r}
+#Setting seed for reproducibility when we rerun this chunk
+set.seed(10)
+
+#Setting rf hyperparameter values to those selected via CV
+rf_final_wkf<-rf_wkf |>
+  finalize_workflow(rf_best_params)
+
+#Fitting final model to the full training set and testing on original test set
+rf_final_fit<-rf_final_wkf |>
+  last_fit(split, metrics = metric_set(mn_log_loss, accuracy))
+```
+
+```{r}
+#Printing negative log loss and accuracy for the best models of each class
+rbind( tree_final_fit |> collect_metrics() |> mutate(model = "Class Tree") |> select(model, everything()),
+      rf_final_fit |> collect_metrics() |> mutate(model = "Random Forest") |> select(model, everything()))
+```
+While the two models produce the same test accuracy, the random forest model produces a lower log loss, indicating it is a superior model by this more sophisticated performance metric. Therefore, we will select this tuned random forest model as our final model and fit it to the entire dataset before taking it to production. 
+

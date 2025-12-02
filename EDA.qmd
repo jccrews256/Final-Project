@@ -143,3 +143,4 @@ ggplot(data = data, aes(x = age, fill = diabetes_binary)) + geom_bar(position = 
 ```
 
 At least in our sample, diabetes rates increase with age until we reach the oldest age groups; the decline for older ages may reflect reduced life expectancy due to diabetes. 
+
