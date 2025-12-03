@@ -225,6 +225,18 @@ rf_production_fit<-rf_final_wkf |>
   fit(data)
 ```
 
+Now that we have fit the final model, we can use it to make predictions. For example, the code below predicts whether or not an individual with the following characteristics has diabetes: 
+- Does not exercise at least once per week
+- Has high blood pressure
+- Has high cholesterol
+- Does not eat their fruits and vegetables
+- Has a history of smoking
+- Is not a heavy drinker
+- Is male
+- Is between the ages of 60 and 64
+- Earns between \$15,000 and \$20,000 per year
+- Has a BMI of 40
+
 ```{r}
 new_obs<-tibble(.rows = 1) |>
   mutate(phys_activity = factor(0, levels = 0:1, labels = c("No", "Yes"))) |>
@@ -248,7 +260,7 @@ new_obs<-tibble(.rows = 1) |>
                                                    "$50k to $75k", "$75k+"))) |>
   mutate(bmi = 40)
 
-predict(rf_production_fit, new_data = new_obs)
+predict(rf_production_fit, new_data = new_obs)$.pred_class
 
 #summary(predict(rf_production_fit, new_data = data))
 ```
