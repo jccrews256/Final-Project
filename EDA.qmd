@@ -154,7 +154,7 @@ data |>
   summarize(count = n()) 
 ```
 
-It is notable that 56% of the observations correspond to females, compared to roughly 51% of the national population. It may have been the case that more of the male responses were culled when the person who created this dataset was cleaning the original response file. 
+It is notable that 56% of the observations correspond to females, compared to roughly [51% of the national population](https://data.census.gov/table/ACSST1Y2024.S0101). It may have been the case that more of the male responses were culled when the person who created this dataset was cleaning the original response file. 
 
 Let's move onto `age`. 
 

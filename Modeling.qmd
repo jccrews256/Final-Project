@@ -1,5 +1,5 @@
 ---
-title: "Modeling Diabetes Incidence"
+title: "A Predictive Model for Diabetes"
 author: "Cass Crews"
 format: html
 editor: visual
@@ -9,7 +9,7 @@ editor: visual
 
 Diabetes is a challenging disease for those who suffer from it, and it is also difficult to diagnose. However, predictive machine learning models may be able to effectively predict when someone has diabetes or is at least at greater risk. The goal of this project is to use easily collected characteristics on individuals to tune a predictive model of diabetes incidence. 
 
-To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is available via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv)
+To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is made available by Alex Teboul via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv).
 
 Our analysis will focus on the following variables, with cleaned and original variable names indicated:
 - `diabetes_binary`: Our response variable, a binary indicator for diabetes (original name: `Diabetes_binary`)
@@ -241,6 +241,8 @@ rf_fit<-rf_wkf |>
             metrics = metric_set(mn_log_loss, accuracy)) 
 ```
 
+Now that we have fit these 55 models, we will extract average log-loss for each value of `mtry`. As we did for the classification tree model, we will also extract average accuracy values for a prediction metric that is easier to interpret.
+
 ```{r}
 #Sorting models by log loss
 rf_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
@@ -253,6 +255,12 @@ rf_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
   kable()
 ```
 
+In this case, the same model had the best cross-validated log loss and accuracy: the model that randomly selects three predictors to use at each split. 
+
+Focusing on the accuracy values, we again see that our accuracy is barely above the no-information rate. It seems we have not found great predictors of diabetes incidence! 
+
+As a final step in the random forest tuning process, let's extract the best `mtry` value (3) so that we can fit a random forest to the entire training set using that value. 
+
 ```{r}
 #Capturing best random forest model
 rf_best_params<-select_best(rf_fit, metric = "mn_log_loss")
@@ -261,8 +269,11 @@ rf_best_params<-select_best(rf_fit, metric = "mn_log_loss")
 rf_best_params
 ```
 
+Now that we have captured the best-performing `mtry` value, we are ready to compare our best classification tree and random forest models. 
 
 #Comparing Performance on Test Set
+
+Let's now fit our best classification tree and random forest models to the entire training set and see how well they predict on our full test set. We will start with the classification tree. Note that the `last_fit()` function both fits the workflow-specified model to the full training set and tests on the test set all in one line of code. Truly tidy! 
 
 ```{r}
 #Setting classification tree hyperparameter values to those selected via CV
@@ -273,6 +284,8 @@ tree_final_wkf<-tree_wkf |>
 tree_final_fit<-tree_final_wkf |>
   last_fit(split, metrics = metric_set(mn_log_loss, accuracy))
 ```
+
+Now that we have fit and tested the best classification tree, we will complete the same process for the best random forest model. 
 
 ```{r}
 #Setting seed for reproducibility when we rerun this chunk
@@ -287,12 +300,18 @@ rf_final_fit<-rf_final_wkf |>
   last_fit(split, metrics = metric_set(mn_log_loss, accuracy))
 ```
 
+We have now fit both models to the training set and predicted on the test set. Let's extract the test metrics to see how the models performed and select a final model. 
+
 ```{r}
 #Printing log loss and accuracy for the best models of each class
 rbind( tree_final_fit |> collect_metrics() |> mutate(model = "Class Tree") |> select(model, everything()),
       rf_final_fit |> collect_metrics() |> mutate(model = "Random Forest") |> select(model, everything()))
 ```
-While the two models produce the same test accuracy, the random forest model produces a lower log loss, indicating it is a superior model by this more sophisticated performance metric. Therefore, we will select this tuned random forest model as our final model and fit it to the entire dataset before taking it to production. 
+Our best random forest model outperforms our best classification tree in terms of both accuracy and log loss. Therefore, we will select this tuned random forest model as our final model and fit it to the entire dataset before taking it to production. 
+
+# Fitting and Exploring the Final Model
+
+Now that we have selected a final model, let's fit it to the full dataset so that we can learn about it and make some initial predictions. 
 
 ```{r}
 #Fitting the final random forest model to the full dataset
@@ -300,16 +319,20 @@ rf_production_fit<-rf_final_wkf |>
   fit(data)
 ```
 
-To better understand why our final model likely won't predict was well as we would have hoped, let's produce the confusion matrix for our final model fit to the full dataset. 
+To better understand why our final model likely won't predict was well as we would have hoped, let's produce the confusion matrix for our final model fit to the full dataset; this is a training set confusion matrix, so it will be informative but optimistic. 
 
 ```{r}
+#Generating predictions for the full dataset
+predictions<-predict(rf_production_fit,new_data = data)$.pred_class
+
 #Creating confusion matrix
 autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, prediction), type = "heatmap")
 ```
 
+Looking at this confusion matrix, it is clear our model struggles to identify those with diabetes and, therefore, often defaults to the most prevalent class (no diabetes). This results in over 31,141 individuals in our dataset misidentified as individuals without diabetes. Meanwhile, our model predicts an individual does have diabetes less than 6,000 times for a dataset with 35,346 individuals who actually have diabetes. 
 
-Now that we have fit the final model, we can use it to make predictions. For example, the code below predicts whether or not an individual with the following characteristics has diabetes: 
-- Does not exercise at least once per week
+Now that we have fit the final model and explored the training confusion matrix, we can use it to make predictions. For example, the code below predicts whether or not an individual with the following characteristics has diabetes: 
+- Has not exercised in the past month
 - Has high blood pressure
 - Has high cholesterol
 - Does not eat their fruits and vegetables
@@ -348,5 +371,12 @@ new_obs<-tibble(.rows = 1) |>
 predict(rf_production_fit, new_data = new_obs)$.pred_class
 ```
 
+It seems this individual is one of the rare people our model predicts to have diabetes. 
+
+# Wrap-Up
+
+This document has described our process of tuning both the classification tree and random forest models to predict whether or not an individual has diabetes. It seems the factors we have explored are not particularly useful for predicting diabetes, or at least not in combination with the two model classes we have tested. 
+
+While not permanently hosted on the web, I have also produced an API that can be used to extract predictions from our final model fit to the full dataset, and the code for this API lives in the associated GitHub repo. If you deploy this API, happy predicting! 
 
 
