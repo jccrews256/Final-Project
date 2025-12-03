@@ -7,26 +7,50 @@ editor: visual
 
 # Introduction
 
+Diabetes is a challenging disease for those who suffer from it, and it is also difficult to diagnose. However, predictive machine learning models may be able to effectively predict when someone has diabetes or is at least at greater risk. The goal of this project is to use easily collected characteristics on individuals to tune a predictive model of diabetes incidence. 
+
+To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is available via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv)
+
+Our analysis will focus on the following variables, with cleaned and original variable names indicated:
+- `diabetes_binary`: Our response variable, a binary indicator for diabetes (original name: `Diabetes_binary`)
+- `high_bp`: A binary indicator for high blood pressure (original name: `HighBP`)
+- `high_chol`: A binary indicator for high cholesterol (original name: `HighChol`)
+- `phys_activity`: A binary indicator for whether the individual has exercised outside of work in the past 30 days (original name: `PhysActivity`)
+- `fruits`: A binary indicator for whether the individual consumes fruit at least once per day (original name: `Fruits`)
+- `veggies`: A binary indicator for whether the individual consumes vegetables at least once per day (original name: `Veggies`)
+- `smoker`: A binary indicator for whether the individual has smoked at least 100 cigarettes in their lifetime (original name: `Smoker`)
+- `hvy_alc_consump`: A binary indicator for whether the individual is considered a heavy drinker -- 14 or more drinks per week for men and seven or more drinks per week for women (original name: `HvyAlcoholConsump`)
+- `sex`: A binary sex indicator -- 0 for female and 1 for male (original name: `Sex`)
+- `age`: An age group indicator with 13 levels ranging from 18-24 to 80+ (original name: `Age`)
+- `income`: A household income income bracket indicator with 8 levels ranging from below $10,000 per year to over \$75,000 per year (original name: `Income`)
+
+This page documents our initial exploratory data analysis (EDA), including data validation steps and basic data summarization. Our summaries will be both univariate summary statistics and multi-variate summaries at each level of our response. 
+
 # Loading Packages and Reading in Data
 
+Before beginning the EDA, we need to load the required packages and read in the data. 
+
 ```{r}
+#Loading packages
 library(tidyverse)
 library(grid)
 library(gridExtra)
 ```
 
+When reading in the data, we will go ahead and subset the variables to only those we are interested in. Note that we have not yet cleaned the variable names. We will do so at the end of the next section. 
+
 ```{r}
+#Initially reading in data and subsetting to variables of interest
 raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
   select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
 ```
 
-
-
-# Initial Cleaning
+# Data Cleaning
 
 We need to complete a few data validation steps to determine whether the data need to be cleaned before any summaries and analysis. To start, we will count the number of missing values for each variable. 
 
 ```{r}
+#Counting missing values
 raw_data |>
   summarize(across(everything(),~sum(is.na(.x))))
 ```
@@ -34,12 +58,14 @@ raw_data |>
 Fortunately, there are no missing values, so we can proceed to confirming each variable's data type is appropriate. 
 
 ```{r}
+#Printing data structure
 str(raw_data)
 ```
 
 All of these variables except BMI should actually be factors, but they are stored as numeric variables. Let's convert them to factors and give them informative labels. However, let's first confirm the levels of these factors are what we expect. 
 
 ```{r}
+#Printing unique values for the factor variables
 apply(raw_data |> select(!BMI), MARGIN = 2, unique)
 ```
 
@@ -48,16 +74,19 @@ These values are exactly as we expect: the first nine variables are binary. The 
 Now we need to ensure the `BMI` variable takes on reasonable values, which we can do by extracting the minimum and maximum within our sample. 
 
 ```{r}
+#Capturing min and max of BMI
 raw_data |>
   summarize(across(BMI, list(min = min, max = max), .names = "{.col}_{.fn}"))
 ```
 
 While a BMI of 98 is very high, it is still plausible. Thus, we can reasonably assume the BMI values are correct. 
 
-Thankfully, these data are very clean. We are now ready to convert most of the variables to factors. In doing so, let's give the variables more consistent names. 
+Thankfully, these data are very clean. We are now ready to convert all the variables except `BMI` to factors and assign appropriate labels. In doing so, let's change all the variable names to the clean ones listed in the introduction. 
 
 ```{r}
+#Converting most variables to factors (with labels) and updating names
 data<-raw_data |>
+  #Converting yes-no variables
   mutate(diabetes_binary = factor(Diabetes_binary, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_bp = factor(HighBP, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_chol = factor(HighChol, levels = 0:1, labels = c("No", "Yes"))) |>
@@ -66,7 +95,9 @@ data<-raw_data |>
   mutate(veggies = factor(Veggies, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(smoker = factor(Smoker, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(hvy_alc_consump = factor(HvyAlcoholConsump, levels = 0:1, labels = c("No", "Yes"))) |>
+  #Converting sex to factor
   mutate(sex = factor(Sex, levels = 0:1, labels = c("Female", "Male"))) |>
+  #Converting age to factor
   mutate(age = factor(Age, levels = 1:13, labels = c("18 to 24", "25 to 29",
                                                      "30 to 34", "35 to 39",
                                                      "40 to 44", "45 to 49",
@@ -74,56 +105,73 @@ data<-raw_data |>
                                                      "60 to 64", "65 to 69",
                                                      "70 to 74", "75 to 79",
                                                      "80+"))) |> 
+  #Converting income to factor
   mutate(income = factor(Income, levels = 1:8, labels = c("Less than $10k", "$10k to $15k",
                                                      "$15k to $20k", "$20k to $25k",
                                                      "$25k to $35k", "$35k to $50k",
                                                      "$50k to $75k", "$75k+"))) |> 
+  #Renaming bmi
   rename(bmi = BMI) |>
+  #Dropping original "factor" variables
   select(!c(Diabetes_binary:Age, Income))
 
+#Printing structure of resultant data
 str(data)
 ```
-Note that when we printed the data structure this time, each variable except `bmi` is a factor with interpretable labels. 
+Note that when we print the data structure this time, each variable except `bmi` is a factor with interpretable labels. 
 
 # Summaries
 
-### Univariate Summaries
+We are now ready to summarize our data. To begin, we will produce univariate numeric summaries. We will then produce visual summaries of the multivariate distributions of our response and each predictor. 
 
-We are now ready to summarize the data. Let's start by exploring the unconditional distribution of each variable. 
+### Univariate Summaries
 
 For our binary categorical variables other than `sex`, let's produce a single table to compare the breakdown across `yes` and `no`. 
 
 ```{r}
+#Generating basic counts for yes-no variables
 data |>
+  #Subsetting to the variables
   select(!c(age, sex, bmi, income)) |>
+  #Pivoting long for easier tabulations
   pivot_longer(cols = everything(), names_to = "variables", values_to = "values") |>
+  #Grouping by variables and their levels
   group_by(variables, values) |>
+  #Counting by group
   summarize(count = n()) |>
+  #Pivoting wide by values for cleanliness
   pivot_wider(names_from = values, values_from = count)
 ```
 
-Looking at these univariate distributions, one key finding is that we have substantial class imbalance in our response variable. However, this is not particularly concerning given the large sample size. 
+Looking at these univariate distributions, one key finding is that we have substantial class imbalance in our response variable. This is not particularly concerning given the large sample size, but it is something to be cognizant of if we prefer to over-predict rather than under-predict diabetes with our screener model. 
 
-Before we move to multi-variate distributions, let's look at the univariate breakdowns for `sex`, `age`, and `income`, as well as some numeric summaries for `bmi`. 
+Before we move to multi-variate distributions, let's look at the univariate breakdowns for `sex`, `age`, and `income`, as well as some numeric summaries for `bmi`. We will start with `sex`. 
 
 ```{r}
+#Generating observation counts by sex
 data |>
   group_by(sex) |>
   summarize(count = n()) 
 ```
 
-It is notable that 56% of the observations correspond to females, compared to roughly 51% of the national population. 
+It is notable that 56% of the observations correspond to females, compared to roughly 51% of the national population. It may have been the case that more of the male responses were culled when the person who created this dataset was cleaning the original response file. 
+
+Let's move onto `age`. 
 
 ```{r}
+#Generating counts by age group
 data |>
   group_by(age) |>
   summarize(count = n()) |>
   print(n = 13)
 ```
 
-Given that these data are built on medical records, observation counts generally trend up with age until we reach the age groups near the average life expectancy. 
+Given that the survey is meant to be representative of the broader US population, the general upward trend in responses with age is a bit concerning. Could this be because younger generations are harder to contact via phone? 
+
+Onto `income`! 
 
 ```{r}
+#Generating counts by income bracket
 data |>
   group_by(income) |>
   summarize(count = n())
@@ -134,6 +182,7 @@ For household income, we see that the most common income group is \$75,000+. Thu
 While we have already captured the minimum and maximum BMI values, we should explore a few other summary statistics for our lone numeric variable. 
 
 ```{r}
+#Generating summary stats for bmi
 data |>
   summarize(across(bmi, list(mean = mean, median =median, sd = sd, IQR = IQR)))
 ```
@@ -145,21 +194,29 @@ Perhaps surprisingly, given that BMI is naturally bounded at the low end, the BM
 To start our multivariate analysis, let's plot our response by each level of our `yes`-`no` variables. Given that we have already explored the unconditional distributions for these variables, we will use filled bar plots to focus specifically on the differences in diabetes rates across these conditional distributions.  
 
 ```{r fig.height=8}
+#Generating response breakdown by phys_activity
 g1<-ggplot(data = data, aes(x = phys_activity, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Physical Activity?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by high_bp
 g2<-ggplot(data = data, aes(x = high_bp, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "High Blood Pressure?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by high_chol
 g3<-ggplot(data = data, aes(x = high_chol, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "High Cholesterol?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by fruits
 g4<-ggplot(data = data, aes(x = fruits, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Fruit?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by veggies
 g5<-ggplot(data = data, aes(x = veggies, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Veggies?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by smoker
 g6<-ggplot(data = data, aes(x = smoker, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Smoking History?", y = "Share of Obs.", fill = "Diabetes?")
 
+#Generating response breakdown by hvy_alc_consump
 g7<-ggplot(data = data, aes(x = hvy_alc_consump, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Heavy Alcohol Consumption?", y = "Share of Obs.", fill = "Diabetes?")
 
-grid.arrange(g1, g2, g3, g4, g5, g6, g7, ncol = 2, top = textGrob("Diabetes Frequency across Levels of Behavioral Variables", hjust = 0.59, gp = gpar(fontsize = 14)))
+#Combining the seven plots in a single visualations
+grid.arrange(g1, g2, g3, g4, g5, g6, g7, ncol = 2, top = textGrob("Diabetes Frequency across Levels of Behavioral Variables", hjust = 1.15, gp = gpar(fontsize = 18)))
 ```
 
 It seems that, unconditional on other variables, physical activity and heavy alcohol consumption are the behaviors most closely related to changes in diabetes frequency. Perhaps surprisingly, the diabetes rate is lower among individuals with relatively high alcohol consumption. 
@@ -169,14 +226,16 @@ Diabetes rates are also much higher among those with high cholesterol and high b
 Let's now explore any differences in diabetes frequency across sex to see whether this demographic characteristic explains diabetes incidence on its own. 
 
 ```{r}
+#Generating response breakdown by sex
 ggplot(data = data, aes(x = sex, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Sex", y = "Share of Obs.", fill = "Diabetes?", title = "Diabetes Frequency by Sex")
 ```
 
-It seems males in this dataset are slighly more likely to have diabetes. 
+It seems males in this dataset are slightly more likely to have diabetes. 
 
 Now let's compare diabetes frequencies across age groups. 
 
 ```{r}
+#Generating diabetes breakdown by age group
 ggplot(data = data, aes(x = age, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Age Group", y = "Share of Observations", fill = "Diabetes?", title = "Diabetes Frequency by Age Group") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
@@ -186,6 +245,7 @@ At least in our sample, diabetes rates increase with age until we reach the olde
 Could household income be a predictor of diabetes? If so, there could be important implications for health interventions. 
 
 ```{r}
+#Generating diabetes breakdown by income bracket
 ggplot(data = data, aes(x = income, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Income Bracket", y = "Share of Observations", fill = "Diabetes?", title = "Diabetes Frequency by Household Income Bracket") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
@@ -195,6 +255,7 @@ It seems diabetes risk declines as household income rises. This may indicate tha
 For our final visuals summary, let's produce BMI box plots for those with and without diabetes to see if the BMI distributions vary. 
 
 ```{r}
+#bmi distributions by diabetes_binary
 ggplot(data = data, aes(x = diabetes_binary, y = bmi, fill = diabetes_binary)) + geom_boxplot() + 
   labs(title = "BMI Distribution by Diabetes Diagnosis", y = "BMI", x = "Diabetes?") + theme(legend.position = "none")
 ```

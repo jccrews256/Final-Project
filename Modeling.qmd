@@ -7,22 +7,57 @@ editor: visual
 
 # Introduction
 
+Diabetes is a challenging disease for those who suffer from it, and it is also difficult to diagnose. However, predictive machine learning models may be able to effectively predict when someone has diabetes or is at least at greater risk. The goal of this project is to use easily collected characteristics on individuals to tune a predictive model of diabetes incidence. 
+
+To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is available via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv)
+
+Our analysis will focus on the following variables, with cleaned and original variable names indicated:
+- `diabetes_binary`: Our response variable, a binary indicator for diabetes (original name: `Diabetes_binary`)
+- `high_bp`: A binary indicator for high blood pressure (original name: `HighBP`)
+- `high_chol`: A binary indicator for high cholesterol (original name: `HighChol`)
+- `phys_activity`: A binary indicator for whether the individual has exercised outside of work in the past 30 days (original name: `PhysActivity`)
+- `fruits`: A binary indicator for whether the individual consumes fruit at least once per day (original name: `Fruits`)
+- `veggies`: A binary indicator for whether the individual consumes vegetables at least once per day (original name: `Veggies`)
+- `smoker`: A binary indicator for whether the individual has smoked at least 100 cigarettes in their lifetime (original name: `Smoker`)
+- `hvy_alc_consump`: A binary indicator for whether the individual is considered a heavy drinker -- 14 or more drinks per week for men and seven or more drinks per week for women (original name: `HvyAlcoholConsump`)
+- `sex`: A binary sex indicator -- 0 for female and 1 for male (original name: `Sex`)
+- `age`: An age group indicator with 13 levels ranging from 18-24 to 80+ (original name: `Age`)
+- `income`: A household income income bracket indicator with 8 levels ranging from below $10,000 per year to over \$75,000 per year (original name: `Income`)
+
+This page documents our efforts to tune two model classes in producing a final predictive model of diabetes incidence. Those two model classes are the classification tree and the random forest, which will each be described in detail below. To tune the models and select a final model, we take the following approach: 
+1. Split the data into a training set containing 70% of the data and a test set containing 30% of the data. 
+2. Tune each model class using the training set via 5-fold cross-validation, using log loss to select the best model from each class. 
+3. Fit each "best" model to the full training set and predict for the full test set, selecting the final model with the best log loss. 
+4. Fit the overall best model to the full dataset so that it can be put into production. 
+
 # Loading Packages and Processing the Data
 
+Before we begin modeling, let's load in the necessary packages and also read in and process the data. Given the size of the dataset, let's utilize five cores to speed up processing time. 
+
 ```{r}
+#Reading in packages
 library(tidyverse)
 library(tidymodels)
 library(rsample)
 library(ranger)
 library(vip)
 library(future)
+library(knitr)
+
+#Utilizing parallel processing with 5 cores
+plan(multisession, workers = 5)
 ```
 
+The code below reads in the data and applies the same processing steps used on the exploratory data analysis page. 
+
 ```{r}
+#Reading in data and subsetting to variables of interest
 raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
   select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
 
+#Converting factor variables to true factors with appropriate labels, renaming with clean names
 data<-raw_data |>
+  #Converting yes-no variables to factors
   mutate(diabetes_binary = factor(Diabetes_binary, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_bp = factor(HighBP, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_chol = factor(HighChol, levels = 0:1, labels = c("No", "Yes"))) |>
@@ -31,7 +66,9 @@ data<-raw_data |>
   mutate(veggies = factor(Veggies, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(smoker = factor(Smoker, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(hvy_alc_consump = factor(HvyAlcoholConsump, levels = 0:1, labels = c("No", "Yes"))) |>
+  #Converting sex to factor
   mutate(sex = factor(Sex, levels = 0:1, labels = c("Female", "Male"))) |>
+  #Converting age to factor
   mutate(age = factor(Age, levels = 1:13, labels = c("18 to 24", "25 to 29",
                                                      "30 to 34", "35 to 39",
                                                      "40 to 44", "45 to 49",
@@ -39,21 +76,20 @@ data<-raw_data |>
                                                      "60 to 64", "65 to 69",
                                                      "70 to 74", "75 to 79",
                                                      "80+"))) |> 
+  #Converting income to factor
   mutate(income = factor(Income, levels = 1:8, labels = c("Less than $10k", "$10k to $15k",
                                                      "$15k to $20k", "$20k to $25k",
                                                      "$25k to $35k", "$35k to $50k",
                                                      "$50k to $75k", "$75k+"))) |> 
+  #Renaming bmi
   rename(bmi = BMI) |>
+  #Dropping original "factors" 
   select(!c(Diabetes_binary:Age, Income))
 ```
 
 # Preparing the Data for Model Tuning
 
-```{r}
-#Utilizing parallel processing with 5 cores
-plan(multisession, workers = 5)
-```
-
+Before we begin fitting models, we need to split the data into training and test set and also create our five cross-validation folds. Let's start by splitting the data. 
 
 ```{r}
 #Setting seed for reproducibility
@@ -65,6 +101,10 @@ split<-initial_split(data, prop = 0.7)
 #Printing the structure of the split object
 split
 ```
+
+By printing the split object, we can see that we have split the data into 70% and 30% chunks. 
+
+Now we will create the five folds for tuning. 
 
 ```{r}
 #Setting seed for reproducibility 
@@ -81,8 +121,17 @@ folds<-vfold_cv(train, v = 5)
 folds
 ```
 
+Printing the folds object reflects the division of our training set into five roughly equal parts. 
 
-# Specifying Data Processing Steps
+# Tuning the Classification Tree
+
+In many ways, the classification tree model is the most conceptually simple model. We build a single tree that functions as a decision rule for predictions. Each split in the tree is successively chosen such that it maximally reduces "impurity" of response classes in the resultant branches. That is, we choose splits such that the observations at the end of each branch are maximally homogeneous. Once we have fit a tree, we make predictions via majority rule within each endpoint. 
+
+To tune a classification tree, we generally adjust two hyperparameters: 
+1. Tree depth, or the maximum number of splits leading to a single branch; a lower value will grow a "wider" tree
+2. Cost complexity, which is a hyperparameter that controls the degree of pruning (removal of splits) to prevent overfitting; higher values correspond to more pruning
+
+Before we tune our classification tree, let's specify the recipe we will use. This is a simple recipe, as most tree-based models do not require us to convert factors to dummies or specific non-linear effects; they naturally handle such complexities. By prepping the recipe and printing a summary, we can confirm that we has assigned the correct roles to each variable. Note that this is the same recipe we will use for the random forest model. 
 
 ```{r}
 #Constructing tidymodels recipe
@@ -91,17 +140,16 @@ recipe<-recipe(diabetes_binary ~ ., data = train)
 #Printing recipe variable list with roles
 recipe |>
   prep(training = train) |>
-  summary()
+  summary() |>
+  print(n = 12)
 ```
 
-# Classification Tree
-
-
+Everything looks good, so we can now create a workflow for our tuning process. We will indicate that we want to tune the tree depth and cost complexity while not allowing any tree endpoint to contain fewer than 20 observations. 
 
 ```{r}
 #Specifying model and engine for classification tree
 tree_model<-decision_tree(tree_depth = tune(),
-                          min_n = 5,
+                          min_n = 20,
                           cost_complexity = tune()) |>
   set_engine("rpart") |>
   set_mode("classification")
@@ -112,6 +160,8 @@ tree_wkf<-workflow() |>
   add_model(tree_model)
 ```
 
+We are now ready to tune. To keep computation costs relatively low, we will fit models for a grid of 10 tree depths and 10 cost complexity values (100 total models). Remember that we are refitting each individual model five times (5-fold CV), so we are actually fitting 500 total models. 
+
 ```{r}
 #Fitting classification tree model across grid of depth and complexity values
 tree_fit<-tree_wkf |>
@@ -120,29 +170,49 @@ tree_fit<-tree_wkf |>
             metrics = metric_set(mn_log_loss, accuracy)) 
 ```
 
+Now that we have fit the models, we can print the average log loss values across the five folds to identify the best combination of tree depth and cost complexity. While we will selected the best model by minimizing the log loss value, we will also print average accuracy values so that we can obtain a better conceptual understanding of predictive capacity. 
+
 ```{r}
 #Sorting models by log loss
 tree_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
-  arrange(mean)
+  arrange(mean) |>
+  kable()
 
 #Sorting models by accuracy
 tree_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
-  arrange(desc(mean))
-
+  arrange(desc(mean)) |>
+  kable()
 ```
 
-```{r}
-#Capturing best tree model
-tree_best_params<-select_best(tree_fit, metric = "mn_log_loss")
+It seems we have five models that achieve the minimum cross-validated log loss. These models all have a tree depth of 10, but with different cost complexity values. When we look at accuracy, we see that our best models barely perform above the no-information rate of 0.861. That is, we only slightly outperform the strategy of predicting that no one has diabetes. This does not bode well for our ability to effectively predict diabetes incidence. 
 
-#Printing hyperparameter values
+Let's now extract our best model based on log loss. In particular, let's select the simplest model (largest cost complexity) among the five top-performing models. 
+
+
+```{r}
+#Capturing best tree model (least complex "best" model)
+tree_best_params<-show_best(tree_fit, metric = "mn_log_loss", n = Inf) |>
+  filter(mean==min(mean)) |>
+  slice_max(cost_complexity) |>
+  select(cost_complexity, tree_depth)
+
+
+
+#Printing hyperparameter value
 tree_best_params
 ```
 
+Now that we have identified our best classification tree model, let's tune the random forest. 
 
+# Tuning the Random Forest
 
-# Random Forest
+Random forests are explicitly designed to overcome a key drawback of a single tree, such as we have in the classification tree model. This limitation is that single trees are highly sensitive to changes in their training data, making their fits highly volatile. Random forests solve this issue by truly creating a random forest with hundreds of trees. We then combine predictions across the trees to generate a single, more stable prediction. 
 
+To create these hundreds of random trees, the model repeated draws non-parametric bootstrap samples from the training data that are the same size as the original dataset and fits a tree to each sample. This naturally creates variability across trees. If you are familiar with the bagged tree model, you are likely thinking this sounds just like that model. You are correct that we create a forest via a bootstrap sampling mechanism for each model. However, there is one clear distinction between the two models. At each split, random forests take a random sample of the predictors before selecting the predictor to split by; the bagged tree model can be thought of as a special case of the random forest where the number of predictors we "randomly select" for each split is equal to the total number of predictors. This ensures we are not allowing a few dominant predictors determine the most important splits for every tree. This is very important because creating more distinct trees will reduce the variability of our predictions in comparison to an ensemble model with highly "correlated" sub-models. 
+
+To tune the random forest model, we will try different values of `mtry`, or the number of predictors randomly selected for each split. We will set the minimum number of observation in any endpoint to 20, and we will also set the total number of trees in each random forest to 500. This creates relatively small random forests but ones that are more computationally manageable. 
+
+Now that we understand the random forest and how we will tune it, let's specify our workflow. Note that we have now changed our engine to the popular `ranger` engine and have indicated we want to tune `mtry`. 
 
 ```{r}
 #Specifying model and engine for random forest
@@ -158,6 +228,8 @@ rf_wkf<-workflow() |>
   add_model(rf_model)
 ```
 
+Now that we have our workflow, we are ready to fit our models. We are trying all possible values of `mtry` given that we have 11 predictors (1 to 11). This results in 55 total models fit given that we are utilizing 5-fold CV. 
+
 ```{r}
 #Setting seed for reproducibility when rerunning chunk
 set.seed(10)
@@ -172,11 +244,13 @@ rf_fit<-rf_wkf |>
 ```{r}
 #Sorting models by log loss
 rf_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
-  arrange(mean)
+  arrange(mean) |>
+  kable()
 
 #Sorting models by accuracy
 rf_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
-  arrange(mean)
+  arrange(desc(mean)) |>
+  kable()
 ```
 
 ```{r}
@@ -221,9 +295,18 @@ rbind( tree_final_fit |> collect_metrics() |> mutate(model = "Class Tree") |> se
 While the two models produce the same test accuracy, the random forest model produces a lower log loss, indicating it is a superior model by this more sophisticated performance metric. Therefore, we will select this tuned random forest model as our final model and fit it to the entire dataset before taking it to production. 
 
 ```{r}
+#Fitting the final random forest model to the full dataset
 rf_production_fit<-rf_final_wkf |>
   fit(data)
 ```
+
+To better understand why our final model likely won't predict was well as we would have hoped, let's produce the confusion matrix for our final model fit to the full dataset. 
+
+```{r}
+#Creating confusion matrix
+autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, prediction), type = "heatmap")
+```
+
 
 Now that we have fit the final model, we can use it to make predictions. For example, the code below predicts whether or not an individual with the following characteristics has diabetes: 
 - Does not exercise at least once per week
@@ -238,6 +321,7 @@ Now that we have fit the final model, we can use it to make predictions. For exa
 - Has a BMI of 40
 
 ```{r}
+#Creating a new observation to predict for using our final model
 new_obs<-tibble(.rows = 1) |>
   mutate(phys_activity = factor(0, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_bp = factor(1, levels = 0:1, labels = c("No", "Yes"))) |>
@@ -260,9 +344,8 @@ new_obs<-tibble(.rows = 1) |>
                                                    "$50k to $75k", "$75k+"))) |>
   mutate(bmi = 40)
 
+#Predicting whether or not this new individual has diabetes
 predict(rf_production_fit, new_data = new_obs)$.pred_class
-
-#summary(predict(rf_production_fit, new_data = data))
 ```
 
 
