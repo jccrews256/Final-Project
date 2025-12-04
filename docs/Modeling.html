@@ -8,7 +8,7 @@
 
 <meta name="author" content="Cass Crews">
 
-<title>A Predictive Model for Diabetes</title>
+<title>Predicting Diabetes</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -121,7 +121,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">A Predictive Model for Diabetes</h1>
+<h1 class="title">Predicting Diabetes</h1>
+<p class="subtitle lead">Model Building</p>
 </div>
 
 
@@ -148,7 +149,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>Introduction</h1>
 <p>Diabetes is a challenging disease for those who suffer from it, and it is also difficult to diagnose. However, predictive machine learning models may be able to effectively predict when someone has diabetes or is at least at greater risk. The goal of this project is to use easily collected characteristics on individuals to tune a predictive model of diabetes incidence.</p>
 <p>To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is made available by Alex Teboul via <a href="https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv">Kaggle</a>.</p>
-<p>Our analysis will focus on the following variables, with cleaned and original variable names indicated: - <code>diabetes_binary</code>: Our response variable, a binary indicator for diabetes (original name: <code>Diabetes_binary</code>) - <code>high_bp</code>: A binary indicator for high blood pressure (original name: <code>HighBP</code>) - <code>high_chol</code>: A binary indicator for high cholesterol (original name: <code>HighChol</code>) - <code>phys_activity</code>: A binary indicator for whether the individual has exercised outside of work in the past 30 days (original name: <code>PhysActivity</code>) - <code>fruits</code>: A binary indicator for whether the individual consumes fruit at least once per day (original name: <code>Fruits</code>) - <code>veggies</code>: A binary indicator for whether the individual consumes vegetables at least once per day (original name: <code>Veggies</code>) - <code>smoker</code>: A binary indicator for whether the individual has smoked at least 100 cigarettes in their lifetime (original name: <code>Smoker</code>) - <code>hvy_alc_consump</code>: A binary indicator for whether the individual is considered a heavy drinker – 14 or more drinks per week for men and seven or more drinks per week for women (original name: <code>HvyAlcoholConsump</code>) - <code>sex</code>: A binary sex indicator – 0 for female and 1 for male (original name: <code>Sex</code>) - <code>age</code>: An age group indicator with 13 levels ranging from 18-24 to 80+ (original name: <code>Age</code>) - <code>income</code>: A household income income bracket indicator with 8 levels ranging from below $10,000 per year to over $75,000 per year (original name: <code>Income</code>)</p>
+<p>Our analysis will focus on the following variables, with cleaned and original variable names indicated:</p>
+<ul>
+<li><code>diabetes_binary</code>: Our response variable, a binary indicator for diabetes (original name: <code>Diabetes_binary</code>)</li>
+<li><code>high_bp</code>: A binary indicator for high blood pressure (original name: <code>HighBP</code>)</li>
+<li><code>high_chol</code>: A binary indicator for high cholesterol (original name: <code>HighChol</code>)</li>
+<li><code>phys_activity</code>: A binary indicator for whether the individual has exercised outside of work in the past 30 days (original name: <code>PhysActivity</code>)</li>
+<li><code>fruits</code>: A binary indicator for whether the individual consumes fruit at least once per day (original name: <code>Fruits</code>)</li>
+<li><code>veggies</code>: A binary indicator for whether the individual consumes vegetables at least once per day (original name: <code>Veggies</code>)</li>
+<li><code>smoker</code>: A binary indicator for whether the individual has smoked at least 100 cigarettes in their lifetime (original name: <code>Smoker</code>)</li>
+<li><code>hvy_alc_consump</code>: A binary indicator for whether the individual is considered a heavy drinker – 14 or more drinks per week for men and seven or more drinks per week for women (original name: <code>HvyAlcoholConsump</code>)</li>
+<li><code>sex</code>: A binary sex indicator – 0 for female and 1 for male (original name: <code>Sex</code>)</li>
+<li><code>age</code>: An age group indicator with 13 levels ranging from 18-24 to 80+ (original name: <code>Age</code>)</li>
+<li><code>income</code>: A household income income bracket indicator with 8 levels ranging from below $10,000 per year to over $75,000 per year (original name: <code>Income</code>)</li>
+</ul>
 <p>This page documents our efforts to tune two model classes in producing a final predictive model of diabetes incidence. Those two model classes are the classification tree and the random forest, which will each be described in detail below. To tune the models and select a final model, we take the following approach: 1. Split the data into a training set containing 70% of the data and a test set containing 30% of the data. 2. Tune each model class using the training set via 5-fold cross-validation, using log loss to select the best model from each class. 3. Fit each “best” model to the full training set and predict for the full test set, selecting the final model with the best log loss. 4. Fit the overall best model to the full dataset so that it can be put into production.</p>
 </section>
 <section id="loading-packages-and-processing-the-data" class="level1">

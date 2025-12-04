@@ -1,5 +1,6 @@
 ---
-title: "A Predictive Model for Diabetes"
+title: "Predicting Diabetes"
+subtitle: "Model Building"
 author: "Cass Crews"
 format: html
 editor: visual
@@ -12,6 +13,7 @@ Diabetes is a challenging disease for those who suffer from it, and it is also d
 To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is made available by Alex Teboul via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv).
 
 Our analysis will focus on the following variables, with cleaned and original variable names indicated:
+
 - `diabetes_binary`: Our response variable, a binary indicator for diabetes (original name: `Diabetes_binary`)
 - `high_bp`: A binary indicator for high blood pressure (original name: `HighBP`)
 - `high_chol`: A binary indicator for high cholesterol (original name: `HighChol`)
