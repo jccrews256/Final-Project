@@ -87,7 +87,7 @@ function() {
   <p>This API is designed to predict whether an individual has diabetes based on user-specified characteristics. 
   The <b>predict</b> endpoint is used to generate predictions and corresponding probabilities,
   while the <b>confusion</b> endpoint is used to generate a confusion matrix plot for the underlying predictive model.
-  To learn more about the underlying model, see this <a href='add_link'>page</a>.</p>
+  To learn more about the underlying model, see this <a href='https://jccrews256.github.io/Final-Project/Modeling.html'>page</a>.</p>
   "
 }
 

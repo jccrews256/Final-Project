@@ -231,11 +231,12 @@ The following object is masked from 'package:utils':
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#Utilizing parallel processing with 5 cores</span></span>
 <span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plan</span>(multisession, <span class="at">workers =</span> <span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>The code below reads in the data and applies the same processing steps used on the exploratory data analysis page.</p>
+<p>The code below reads in the data and applies the same processing steps used on the <a href="https://jccrews256.github.io/Final-Project/EDA.html">exploratory data analysis page</a>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Reading in data and subsetting to variables of interest</span></span>
 <span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>raw_data<span class="ot">&lt;-</span><span class="fu">read_csv</span>(<span class="st">"diabetes_binary_health_indicators_BRFSS2015.csv"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>         Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Rows: 253680 Columns: 22
 ── Column specification ────────────────────────────────────────────────────────
@@ -2831,8 +2832,10 @@ See help("Deprecated")</code></pre>
 <p>We have now fit both models to the training set and predicted on the test set. Let’s extract the test metrics to see how the models performed and select a final model.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Printing log loss and accuracy for the best models of each class</span></span>
-<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>( tree_final_fit <span class="sc">|&gt;</span> <span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">"Class Tree"</span>) <span class="sc">|&gt;</span> <span class="fu">select</span>(model, <span class="fu">everything</span>()),</span>
-<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>      rf_final_fit <span class="sc">|&gt;</span> <span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">"Random Forest"</span>) <span class="sc">|&gt;</span> <span class="fu">select</span>(model, <span class="fu">everything</span>()))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>( tree_final_fit <span class="sc">|&gt;</span> <span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">"Class Tree"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>         <span class="fu">select</span>(model, <span class="fu">everything</span>()),</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>      rf_final_fit <span class="sc">|&gt;</span> <span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">model =</span> <span class="st">"Random Forest"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>        <span class="fu">select</span>(model, <span class="fu">everything</span>()))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 4 × 5
   model         .metric     .estimator .estimate .config        
@@ -2859,7 +2862,8 @@ See help("Deprecated")</code></pre>
 <span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>predictions<span class="ot">&lt;-</span><span class="fu">predict</span>(rf_production_fit,<span class="at">new_data =</span> data)<span class="sc">$</span>.pred_class</span>
 <span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="co">#Creating confusion matrix</span></span>
-<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(<span class="fu">conf_mat</span>(data <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">prediction =</span> predictions), diabetes_binary, prediction), <span class="at">type =</span> <span class="st">"heatmap"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(<span class="fu">conf_mat</span>(data <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">prediction =</span> predictions), diabetes_binary, prediction), </span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">type =</span> <span class="st">"heatmap"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -2906,7 +2910,7 @@ Levels: No Yes</code></pre>
 <section id="wrap-up" class="level1">
 <h1>Wrap-Up</h1>
 <p>This document has described our process of tuning both the classification tree and random forest models to predict whether or not an individual has diabetes. It seems the factors we have explored are not particularly useful for predicting diabetes, or at least not in combination with the two model classes we have tested.</p>
-<p>While not permanently hosted on the web, I have also produced an API that can be used to extract predictions from our final model fit to the full dataset, and the code for this API lives in the associated GitHub repo. If you deploy this API, happy predicting!</p>
+<p>While not permanently hosted on the web, I have also produced an API that can be used to extract predictions from our final model fit to the full dataset, and the code for this API lives in the associated <a href="https://github.com/jccrews256/Final-Project/tree/main">GitHub repo</a>. If you deploy this API, happy predicting!</p>
 
 
 </section>

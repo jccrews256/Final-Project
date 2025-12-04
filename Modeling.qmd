@@ -48,12 +48,13 @@ library(knitr)
 plan(multisession, workers = 5)
 ```
 
-The code below reads in the data and applies the same processing steps used on the exploratory data analysis page. 
+The code below reads in the data and applies the same processing steps used on the [exploratory data analysis page](https://jccrews256.github.io/Final-Project/EDA.html). 
 
 ```{r}
 #Reading in data and subsetting to variables of interest
 raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
-  select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
+  select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, 
+         Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
 
 #Converting factor variables to true factors with appropriate labels, renaming with clean names
 data<-raw_data |>
@@ -302,8 +303,10 @@ We have now fit both models to the training set and predicted on the test set. L
 
 ```{r}
 #Printing log loss and accuracy for the best models of each class
-rbind( tree_final_fit |> collect_metrics() |> mutate(model = "Class Tree") |> select(model, everything()),
-      rf_final_fit |> collect_metrics() |> mutate(model = "Random Forest") |> select(model, everything()))
+rbind( tree_final_fit |> collect_metrics() |> mutate(model = "Class Tree") |> 
+         select(model, everything()),
+      rf_final_fit |> collect_metrics() |> mutate(model = "Random Forest") |> 
+        select(model, everything()))
 ```
 Our best random forest model outperforms our best classification tree in terms of both accuracy and log loss. Therefore, we will select this tuned random forest model as our final model and fit it to the entire dataset before taking it to production. 
 
@@ -324,7 +327,8 @@ To better understand why our final model likely won't predict was well as we wou
 predictions<-predict(rf_production_fit,new_data = data)$.pred_class
 
 #Creating confusion matrix
-autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, prediction), type = "heatmap")
+autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, prediction), 
+         type = "heatmap")
 ```
 
 Looking at this confusion matrix, it is clear our model struggles to identify those with diabetes and, therefore, often defaults to the most prevalent class (no diabetes). This results in over 31,141 individuals in our dataset misidentified as individuals without diabetes. Meanwhile, our model predicts an individual does have diabetes less than 6,000 times for a dataset with 35,346 individuals who actually have diabetes. 
@@ -375,6 +379,6 @@ It seems this individual is one of the rare people our model predicts to have di
 
 This document has described our process of tuning both the classification tree and random forest models to predict whether or not an individual has diabetes. It seems the factors we have explored are not particularly useful for predicting diabetes, or at least not in combination with the two model classes we have tested. 
 
-While not permanently hosted on the web, I have also produced an API that can be used to extract predictions from our final model fit to the full dataset, and the code for this API lives in the associated GitHub repo. If you deploy this API, happy predicting! 
+While not permanently hosted on the web, I have also produced an API that can be used to extract predictions from our final model fit to the full dataset, and the code for this API lives in the associated [GitHub repo](https://github.com/jccrews256/Final-Project/tree/main). If you deploy this API, happy predicting! 
 
 

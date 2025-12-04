@@ -12,6 +12,7 @@ Diabetes is a challenging disease for those who suffer from it, and it is also d
 To develop this model, we will utilize the 2015 survey responses from the Behavioral Risk Factor Surveillance System (BRFSS), an annual telephone-based survey attempting to characterize the state of American health. While over 400,000 individuals were surveyed via telephone, we analyze a cleaned version of the dataset that contains 253,680 responses. This dataset is available via [Kaggle](https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset?select=diabetes_binary_health_indicators_BRFSS2015.csv)
 
 Our analysis will focus on the following variables, with cleaned and original variable names indicated:
+
 - `diabetes_binary`: Our response variable, a binary indicator for diabetes (original name: `Diabetes_binary`)
 - `high_bp`: A binary indicator for high blood pressure (original name: `HighBP`)
 - `high_chol`: A binary indicator for high cholesterol (original name: `HighChol`)
@@ -42,7 +43,8 @@ When reading in the data, we will go ahead and subset the variables to only thos
 ```{r}
 #Initially reading in data and subsetting to variables of interest
 raw_data<-read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |>
-  select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
+  select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, Smoker, 
+         HvyAlcoholConsump, Sex, Age, BMI, Income)
 ```
 
 # Data Cleaning
@@ -195,28 +197,44 @@ To start our multivariate analysis, let's plot our response by each level of our
 
 ```{r fig.height=8}
 #Generating response breakdown by phys_activity
-g1<-ggplot(data = data, aes(x = phys_activity, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Physical Activity?", y = "Share of Obs.", fill = "Diabetes?")
+g1<-ggplot(data = data, aes(x = phys_activity, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Physical Activity?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by high_bp
-g2<-ggplot(data = data, aes(x = high_bp, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "High Blood Pressure?", y = "Share of Obs.", fill = "Diabetes?")
+g2<-ggplot(data = data, aes(x = high_bp, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "High Blood Pressure?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by high_chol
-g3<-ggplot(data = data, aes(x = high_chol, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "High Cholesterol?", y = "Share of Obs.", fill = "Diabetes?")
+g3<-ggplot(data = data, aes(x = high_chol, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "High Cholesterol?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by fruits
-g4<-ggplot(data = data, aes(x = fruits, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Fruit?", y = "Share of Obs.", fill = "Diabetes?")
+g4<-ggplot(data = data, aes(x = fruits, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Eat Fruit?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by veggies
-g5<-ggplot(data = data, aes(x = veggies, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Eat Veggies?", y = "Share of Obs.", fill = "Diabetes?")
+g5<-ggplot(data = data, aes(x = veggies, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Eat Veggies?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by smoker
-g6<-ggplot(data = data, aes(x = smoker, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Smoking History?", y = "Share of Obs.", fill = "Diabetes?")
+g6<-ggplot(data = data, aes(x = smoker, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Smoking History?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Generating response breakdown by hvy_alc_consump
-g7<-ggplot(data = data, aes(x = hvy_alc_consump, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Heavy Alcohol Consumption?", y = "Share of Obs.", fill = "Diabetes?")
+g7<-ggplot(data = data, aes(x = hvy_alc_consump, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Heavy Alcohol Consumption?", y = "Share of Obs.", fill = "Diabetes?")
 
 #Combining the seven plots in a single visualations
-grid.arrange(g1, g2, g3, g4, g5, g6, g7, ncol = 2, top = textGrob("Diabetes Frequency across Levels of Behavioral Variables", hjust = 1.15, gp = gpar(fontsize = 18)))
+grid.arrange(g1, g2, g3, g4, g5, g6, g7, ncol = 2, 
+             top = textGrob("Diabetes Frequency across Levels of Behavioral Variables", 
+                            hjust = 0.8, gp = gpar(fontsize = 18)))
 ```
 
 It seems that, unconditional on other variables, physical activity and heavy alcohol consumption are the behaviors most closely related to changes in diabetes frequency. Perhaps surprisingly, the diabetes rate is lower among individuals with relatively high alcohol consumption. 
@@ -227,7 +245,10 @@ Let's now explore any differences in diabetes frequency across sex to see whethe
 
 ```{r}
 #Generating response breakdown by sex
-ggplot(data = data, aes(x = sex, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Sex", y = "Share of Obs.", fill = "Diabetes?", title = "Diabetes Frequency by Sex")
+ggplot(data = data, aes(x = sex, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Sex", y = "Share of Obs.", fill = "Diabetes?", 
+       title = "Diabetes Frequency by Sex")
 ```
 
 It seems males in this dataset are slightly more likely to have diabetes. 
@@ -236,7 +257,10 @@ Now let's compare diabetes frequencies across age groups.
 
 ```{r}
 #Generating diabetes breakdown by age group
-ggplot(data = data, aes(x = age, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Age Group", y = "Share of Observations", fill = "Diabetes?", title = "Diabetes Frequency by Age Group") + 
+ggplot(data = data, aes(x = age, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Age Group", y = "Share of Observations", fill = "Diabetes?", 
+       title = "Diabetes Frequency by Age Group") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
 
@@ -246,7 +270,10 @@ Could household income be a predictor of diabetes? If so, there could be importa
 
 ```{r}
 #Generating diabetes breakdown by income bracket
-ggplot(data = data, aes(x = income, fill = diabetes_binary)) + geom_bar(position = "fill") + labs(x = "Income Bracket", y = "Share of Observations", fill = "Diabetes?", title = "Diabetes Frequency by Household Income Bracket") + 
+ggplot(data = data, aes(x = income, fill = diabetes_binary)) + 
+  geom_bar(position = "fill") + 
+  labs(x = "Income Bracket", y = "Share of Observations", fill = "Diabetes?", 
+       title = "Diabetes Frequency by Household Income Bracket") + 
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
 
@@ -256,12 +283,14 @@ For our final visuals summary, let's produce BMI box plots for those with and wi
 
 ```{r}
 #bmi distributions by diabetes_binary
-ggplot(data = data, aes(x = diabetes_binary, y = bmi, fill = diabetes_binary)) + geom_boxplot() + 
-  labs(title = "BMI Distribution by Diabetes Diagnosis", y = "BMI", x = "Diabetes?") + theme(legend.position = "none")
+ggplot(data = data, aes(x = diabetes_binary, y = bmi, fill = diabetes_binary)) + 
+  geom_boxplot() + 
+  labs(title = "BMI Distribution by Diabetes Diagnosis", y = "BMI", x = "Diabetes?") + 
+  theme(legend.position = "none")
 ```
 
 It does seem that those with diabetes have higher BMIs on average, but these distributions almost completely overlap. 
 
 # Wrap-Up
 
-This concludes our exploratory data analysis. We will now attempt to predict whether or not an individual has diabetes using only the variables explored on this page. 
+This concludes our exploratory data analysis. We will now attempt to predict whether or not an individual has diabetes using only the variables explored on this page. The documentation of the modeling process can be found [here](https://jccrews256.github.io/Final-Project/Modeling.html). 
