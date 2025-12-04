@@ -1,24 +1,28 @@
+################################################################################
+#
+#Title: Diabetes Prediction API
+#Author: Cass Crews
+#
 #
 # This is a Plumber API. You can run the API by clicking
 # the 'Run API' button above.
 #
-# Find out more about building APIs with Plumber here:
-#
-#    https://www.rplumber.io/
-#
+################################################################################
 
+#Reading in required packages
 library(plumber)
-
-#Building the model
 library(tidyverse)
 library(tidymodels)
 library(rsample)
 library(ranger)
+library(future)
 
+#Reading in data and subsetting to variables of interest
 raw_data<-read_csv("../diabetes_binary_health_indicators_BRFSS2015.csv") |>
   select(Diabetes_binary, HighBP, HighChol, PhysActivity, Fruits, Veggies, 
          Smoker, HvyAlcoholConsump, Sex, Age, BMI, Income)
 
+#Converting all but bmi to factors with clean labels and names
 data<-raw_data |>
   mutate(diabetes_binary = factor(Diabetes_binary, levels = 0:1, labels = c("No", "Yes"))) |>
   mutate(high_bp = factor(HighBP, levels = 0:1, labels = c("No", "Yes"))) |>
@@ -43,6 +47,9 @@ data<-raw_data |>
   rename(bmi = BMI) |>
   select(!c(Diabetes_binary:Age, Income))
 
+#Deploying five cores to speed up model fitting
+plan(multisession, workers = 5)
+
 #Constructing tidymodels recipe
 recipe<-recipe(diabetes_binary ~ ., data = data)
 
@@ -55,12 +62,14 @@ rf_model<-rand_forest(mtry = 3,
 
 #Creating random forest workflow
 rf_wkf<-workflow() |>
-  add_recipe(recipe) |>
+  add_recipe(recipe, seed = 25) |>
   add_model(rf_model)
 
+#Fitting final model
 rf_fit<-rf_wkf |>
   fit(data)
 
+#Extracting predictions for training set for confusion matrix
 predictions<-predict(rf_fit,new_data = data)$.pred_class
 
 #* @apiTitle Diabetes Prediction API
@@ -82,6 +91,9 @@ function() {
   "
 }
 
+#Query the info via
+#http://127.0.0.1:8500/info
+
 #* Generate diabetes prediction
 #* @param phys Physical activity indicator (1 if active once per week, 0 if not)
 #* @param chol High cholesterol indicator (1 if cholesterol high, 0 if not)
@@ -94,10 +106,12 @@ function() {
 #* @param age Age in years (18+)
 #* @param bmi Body mass index (BMI)
 #* @param income Annual income in dollars
-#* @get /predict
+#* @get /pred
 function(phys, chol, bp, fruit, veg, smoker, alc, sex, age, bmi, income){
+  #Converting age input to numeric
   age<-as.numeric(age)
   
+  #Coding age
   age_code<-case_when(
     age %in% 18:24 ~ 1,
     age %in% 25:29 ~ 2,
@@ -114,8 +128,10 @@ function(phys, chol, bp, fruit, veg, smoker, alc, sex, age, bmi, income){
     age>=80 ~ 13
   )
   
+  #Converting income to numeric
   income<-as.numeric(income)
   
+  #Coding income
   income_code<-case_when(
     income< 10000 ~ 1,
     income>=10000 & income< 15000 ~ 2,
@@ -127,6 +143,7 @@ function(phys, chol, bp, fruit, veg, smoker, alc, sex, age, bmi, income){
     income>=75000 ~ 8
   )
   
+  #Constructing new observation based on user inputs to API call
   new_obs<-tibble(.rows = 1) |>
     mutate(phys_activity = factor(as.numeric(phys), levels = 0:1, labels = c("No", "Yes"))) |>
     mutate(high_bp = factor(as.numeric(bp), levels = 0:1, labels = c("No", "Yes"))) |>
@@ -149,17 +166,30 @@ function(phys, chol, bp, fruit, veg, smoker, alc, sex, age, bmi, income){
                                                        "$25k to $35k", "$35k to $50k",
                                                        "$50k to $75k", "$75k+")))
 
-  
+  #Capturing predictions and prediction probabilities
   class<-predict(rf_fit, new_data = new_obs, type = "class")$.pred_class
   prob<-predict(rf_fit, new_data = new_obs, type = "prob")$.pred_Yes
   
+  #Capturing outputs
   list(predicted_class = class, probability_of_diabetes = prob)
 }
 
-#query with http://localhost:PORT/confusion
-#* Generate confusion matrix for the underlying model
+#Try out a few API prediction calls! 
+#Example Yes prediction
+#http://127.0.0.1:8500/pred?phys=0&chol=1&bp=1&fruit=0&veg=0&smoker=1&alc=0&sex=1&age=62&bmi=40&income=12000
+#More confident Yes prediction
+#http://127.0.0.1:8500/predict?phys=0&chol=1&bp=1&fruit=1&veg=1&smoker=1&alc=0&sex=1&age=62&bmi=60&income=7000
+#Example "hard" no prediction
+#http://127.0.0.1:8500/pred?phys=1&chol=0&bp=0&fruit=1&veg=0&smoker=0&alc=1&sex=0&age=23&bmi=19&income=45000
+
+#* Generate training set confusion matrix for the underlying model
 #* @serializer png
 #* @get /confusion
 function() {
-    print(autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, prediction), type = "heatmap"))
+  #Printing training set confusion matrix
+    print(autoplot(conf_mat(data |> mutate(prediction = predictions), diabetes_binary, 
+                            prediction), type = "heatmap"))
 }
+
+#Query confusion matrix via
+#http://127.0.0.1:8500/confusion
