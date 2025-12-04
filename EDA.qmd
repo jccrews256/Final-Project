@@ -235,7 +235,7 @@ g7<-ggplot(data = data, aes(x = hvy_alc_consump, fill = diabetes_binary)) +
 #Combining the seven plots in a single visualations
 grid.arrange(g1, g2, g3, g4, g5, g6, g7, ncol = 2, 
              top = textGrob("Diabetes Frequency across Levels of Behavioral and Health Indicator Variables", 
-                            hjust = 0.45, gp = gpar(fontsize = 14)))
+                            hjust = 0.45, gp = gpar(fontsize = 12)))
 ```
 
 It seems that, unconditional on other variables, physical activity and heavy alcohol consumption are the behaviors most closely related to changes in diabetes frequency. Perhaps surprisingly, the diabetes rate is lower among individuals with relatively high alcohol consumption. 
