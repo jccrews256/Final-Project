@@ -57,12 +57,12 @@ recipe<-recipe(diabetes_binary ~ ., data = data)
 rf_model<-rand_forest(mtry = 3,
                       min_n = 20,
                       trees = 500) |>
-  set_engine("ranger") |>
+  set_engine("ranger", seed = 25) |>
   set_mode("classification")
 
 #Creating random forest workflow
 rf_wkf<-workflow() |>
-  add_recipe(recipe, seed = 25) |>
+  add_recipe(recipe) |>
   add_model(rf_model)
 
 #Fitting final model
@@ -85,9 +85,25 @@ function() {
   <b>Author:</b> Cass Crews
   <br>
   <p>This API is designed to predict whether an individual has diabetes based on user-specified characteristics. 
-  The <b>predict</b> endpoint is used to generate predictions and corresponding probabilities,
+  The <b>pred</b> endpoint is used to generate predictions and corresponding probabilities,
   while the <b>confusion</b> endpoint is used to generate a confusion matrix plot for the underlying predictive model.
   To learn more about the underlying model, see this <a href='https://jccrews256.github.io/Final-Project/Modeling.html'>page</a>.</p>
+  
+  <p>For reference, the parameters for the <b>pred</b> endpoint are:
+  <ul>
+    <li>phys: Physical activity indicator (1 if active once per week, 0 if not)</li>
+    <li>chol: High cholesterol indicator (1 if cholesterol high, 0 if not)</li>
+    <li>bp: High blood pressure indicator (1 if blood pressure high, 0 if not)</li>
+    <li>fruit: Fruit consumption indicator (1 if consumes at least one serving of fruit per day, 0 if not)</li>
+    <li>veg: Vegetable consumption indicator (1 if consumes at least one serving of vegetables per day, 0 if not)</li>
+    <li>smoker: Smoking history indicator (1 if smoked at least 100 cigarettes in life, 0 if not)</li>
+    <li>alc: Heavy alcohol consumption indicator (1 if heavy drinker, 0 if not)</li>
+    <li>sex: Sex of individual (0 if female, 1 if male)</li>
+    <li>age: Age in years (18+)</li>
+    <li>bmi: Body mass index (BMI)</li>
+    <li>income: Annual income in dollars</li>
+  </ul>
+  <p>
   "
 }
 
