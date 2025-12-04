@@ -43,12 +43,13 @@ library(ranger)
 library(vip)
 library(future)
 library(knitr)
+library(kableExtra)
 
 #Utilizing parallel processing with 5 cores
 plan(multisession, workers = 5)
 ```
 
-The code below reads in the data and applies the same processing steps used on the [exploratory data analysis page](https://jccrews256.github.io/Final-Project/EDA.html). 
+The code below reads in the data and applies the same processing steps used on the [exploratory data analysis page](EDA.html). 
 
 ```{r}
 #Reading in data and subsetting to variables of interest
@@ -179,12 +180,14 @@ Now that we have fit the models, we can print the average log loss values across
 #Sorting models by log loss
 tree_fit |> collect_metrics() |> filter(.metric=="mn_log_loss") |>
   arrange(mean) |>
-  kable()
+  kable() |>
+  scroll_box(height = "300px")
 
 #Sorting models by accuracy
 tree_fit |> collect_metrics() |> filter(.metric=="accuracy") |>
   arrange(desc(mean)) |>
-  kable()
+  kable() |>
+  scroll_box(height = "300px")
 ```
 
 It seems we have five models that achieve the minimum cross-validated log loss. These models all have a tree depth of 10, but with different cost complexity values. When we look at accuracy, we see that our best models barely perform above the no-information rate of 0.861. That is, we only slightly outperform the strategy of predicting that no one has diabetes. This does not bode well for our ability to effectively predict diabetes incidence. 

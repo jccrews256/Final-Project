@@ -293,4 +293,4 @@ It does seem that those with diabetes have higher BMIs on average, but these dis
 
 # Wrap-Up
 
-This concludes our exploratory data analysis. We will now attempt to predict whether or not an individual has diabetes using only the variables explored on this page. The documentation of the modeling process can be found [here](https://jccrews256.github.io/Final-Project/Modeling.html). 
+This concludes our exploratory data analysis. We will now attempt to predict whether or not an individual has diabetes using only the variables explored on this page. The documentation of the modeling process can be found [here](Modeling.html). 
